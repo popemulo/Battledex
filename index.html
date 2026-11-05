@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Battlegroup</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <h1>Battlegroup</h1>
+      <p class="tagline">Pick two fighters. See who wins.</p>
+    </header>
+
+    <!-- View 1: input form (visible) -->
+    <section id="view-form" class="view">
+      <form id="fight-form" novalidate>
+        <div class="field">
+          <label for="fighter-a">Fighter 1</label>
+          <input id="fighter-a" name="fighterA" type="text" maxlength="60" placeholder="e.g. Goku" autocomplete="off">
+          <div id="desc-a-wrap" class="desc-wrap" hidden>
+            <label for="desc-a">Describe fighter 1 (not recognised)</label>
+            <input id="desc-a" name="descA" type="text" maxlength="300" placeholder="Who are they and what can they do?" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="vs" aria-hidden="true">VS</div>
+
+        <div class="field">
+          <label for="fighter-b">Fighter 2</label>
+          <input id="fighter-b" name="fighterB" type="text" maxlength="60" placeholder="e.g. Saitama" autocomplete="off">
+          <div id="desc-b-wrap" class="desc-wrap" hidden>
+            <label for="desc-b">Describe fighter 2 (not recognised)</label>
+            <input id="desc-b" name="descB" type="text" maxlength="300" placeholder="Who are they and what can they do?" autocomplete="off">
+          </div>
+        </div>
+
+        <p id="form-message" class="form-message" role="alert"></p>
+
+        <button id="fight-button" type="submit">Fight</button>
+      </form>
+    </section>
+
+    <!-- View 2: loading (hidden) -->
+    <section id="view-loading" class="view" hidden>
+      <div class="loading">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>The fighters are squaring up...</p>
+      </div>
+    </section>
+
+    <!-- View 3: result (hidden) -->
+    <section id="view-result" class="view" hidden>
+      <p class="winner-banner">
+        <span class="win-label">WIN</span>
+        <span id="winner-name" class="winner-name">Winner name</span>
+      </p>
+
+      <div class="fighters">
+        <figure class="fighter">
+          <div id="image-a" class="image-placeholder" role="img" aria-label="Art for fighter 1"></div>
+          <figcaption id="name-a">Fighter 1</figcaption>
+        </figure>
+
+        <figure class="fighter">
+          <div id="image-b" class="image-placeholder" role="img" aria-label="Art for fighter 2"></div>
+          <figcaption id="name-b">Fighter 2</figcaption>
+        </figure>
+      </div>
+
+      <p id="reasoning" class="reasoning">Reasoning for the verdict appears here.</p>
+
+      <button id="again-button" type="button">Fight again</button>
+    </section>
+
+    <!-- View 4: error (hidden) -->
+    <section id="view-error" class="view" hidden>
+      <p id="error-message" class="error-message" role="alert">Something went wrong.</p>
+      <button id="retry-button" type="button">Retry</button>
+      <button id="back-button" type="button" class="secondary">Change fighters</button>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

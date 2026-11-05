@@ -1,0 +1,13 @@
+{
+  "name": "battlegroup",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Battlegroup: AI verdicts and art for fighter matchups",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0"
+  }
+}
