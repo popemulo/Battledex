@@ -15,8 +15,8 @@ A web app where you type in two fighters, including anime characters, and get an
 
 ## 4. Verdict format (decided)
 - **Winner:** the winning fighter's name, shown with a "WIN" label. No score, percentage, or confidence is displayed.
-- **Reasoning:** 3-5 sentences covering style, strengths, and the matchup
-- **Input:** fighter names only. If the model doesn't recognise a name, the app asks the user to add a short description (up to 300 characters) for that fighter and then judges using it (decided).
+- **Reasoning:** about 3 sentences (hard cap 5 sentences / 500 characters, enforced by the server) covering style, strengths, and the matchup
+- **Input:** fighter names only. If the model doesn't recognise a name, the app asks the user to add a short description (up to 200 characters) for that fighter and then judges using it (decided).
 
 ## 5. Character art (decided)
 - **Style:** one fixed anime style for both fighters so the pair looks like they belong together, e.g. "anime style, full body, dynamic pose, neutral background". The style text is a shared prefix in every image prompt.
@@ -37,9 +37,9 @@ A web app where you type in two fighters, including anime characters, and get an
 - **B. User-supplied key:** the visitor pastes their own key, stored in `localStorage`. Fine for a personal demo, not for a public link.
 
 ## 7. Providers, cost, and limits (decided)
-- **LLM for verdicts (decided):** Claude, called from the Vercel Function with the official Anthropic SDK (`@anthropic-ai/sdk`). Default model `claude-opus-5-5`, overridable with the `ANTHROPIC_MODEL` environment variable (a smaller model such as `claude-haiku-5-5` is cheaper). The key goes in `ANTHROPIC_API_KEY`.
-- **Image model:** to be chosen (open decision). Images are usually the main cost, so estimate cost per match before launch.
-- **Rate limit (per IP):** 5 requests per minute per IP address, enforced by the proxy. Requests over the limit get a "too many requests, try again shortly" message. Visitors behind a shared IP (office or mobile carrier NAT) share this limit. Vercel Functions are stateless, so the counter needs shared storage (e.g. a Redis store) or a Vercel-level rate limiting rule. Decided: use Upstash Redis (REST) when `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set. Without them, the hosted app counts per function instance only (best effort), and local dev counts in a temp file.
+- **LLM for verdicts (decided):** Claude, called from the Vercel Function with the official Anthropic SDK (`@anthropic-ai/sdk`). Default model `claude-sonnet-5-5`, overridable with the `ANTHROPIC_MODEL` environment variable (a smaller model such as `claude-haiku-5-5` is cheaper). The key goes in `ANTHROPIC_API_KEY`.
+- **Image model (decided):** OpenAI, called from the Vercel Function with the official `openai` package. Default model `gpt-image-1-mini` at low quality, 1024x1536 JPEG, overridable with `OPENAI_IMAGE_MODEL`. The key goes in `OPENAI_API_KEY`. Measured about 10 seconds per image. Estimate the cost per match (two images) from OpenAI's current price list before launch.
+- **Rate limit (per IP):** `/api/verdict` allows 5 requests per minute per IP address and `/api/image` allows 10 (two per match), each in its own bucket, enforced by the proxy. Requests over the limit get a "too many requests, try again shortly" message. Visitors behind a shared IP (office or mobile carrier NAT) share this limit. Vercel Functions are stateless, so the counter needs shared storage (e.g. a Redis store) or a Vercel-level rate limiting rule. Decided: use Upstash Redis (REST) when `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set. Without them, the hosted app counts per function instance only (best effort), and local dev counts in a temp file.
 
 ## 8. Content and safety (decided)
 - Fictional characters and public figures are allowed.
@@ -59,5 +59,5 @@ A web app where you type in two fighters, including anime characters, and get an
 - No API keys in client-side code.
 
 ## 11. Open decisions
-- Image model and final art style
+- Final art style (the model is decided: OpenAI `gpt-image-1-mini`, see section 7)
 - Copyright approach for anime characters (private demo, public launch with disclaimer, or other)

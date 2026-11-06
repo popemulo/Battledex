@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Battlegroup</title>
+  <title>Battlegroup - who wins?</title>
+  <meta name="description" content="Pick two fighters and get an AI verdict on who wins, with anime-style art.">
+  <meta name="theme-color" content="#0d0d1a">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -18,10 +20,10 @@
       <form id="fight-form" novalidate>
         <div class="field">
           <label for="fighter-a">Fighter 1</label>
-          <input id="fighter-a" name="fighterA" type="text" maxlength="60" placeholder="e.g. Goku" autocomplete="off">
+          <input id="fighter-a" name="fighterA" type="text" maxlength="50" placeholder="e.g. Goku" autocomplete="off">
           <div id="desc-a-wrap" class="desc-wrap" hidden>
             <label for="desc-a">Describe fighter 1 (not recognised)</label>
-            <input id="desc-a" name="descA" type="text" maxlength="300" placeholder="Who are they and what can they do?" autocomplete="off">
+            <input id="desc-a" name="descA" type="text" maxlength="200" placeholder="Who are they and what can they do?" autocomplete="off">
           </div>
         </div>
 
@@ -29,10 +31,10 @@
 
         <div class="field">
           <label for="fighter-b">Fighter 2</label>
-          <input id="fighter-b" name="fighterB" type="text" maxlength="60" placeholder="e.g. Saitama" autocomplete="off">
+          <input id="fighter-b" name="fighterB" type="text" maxlength="50" placeholder="e.g. Saitama" autocomplete="off">
           <div id="desc-b-wrap" class="desc-wrap" hidden>
             <label for="desc-b">Describe fighter 2 (not recognised)</label>
-            <input id="desc-b" name="descB" type="text" maxlength="300" placeholder="Who are they and what can they do?" autocomplete="off">
+            <input id="desc-b" name="descB" type="text" maxlength="200" placeholder="Who are they and what can they do?" autocomplete="off">
           </div>
         </div>
 
@@ -46,25 +48,35 @@
     <section id="view-loading" class="view" hidden>
       <div class="loading">
         <div class="spinner" aria-hidden="true"></div>
-        <p>The fighters are squaring up...</p>
+        <p id="loading-text" role="status" tabindex="-1" data-focus>The fighters are squaring up...</p>
       </div>
     </section>
 
     <!-- View 3: result (hidden) -->
     <section id="view-result" class="view" hidden>
-      <p class="winner-banner">
+      <p class="winner-banner" tabindex="-1" data-focus>
         <span class="win-label">WIN</span>
         <span id="winner-name" class="winner-name">Winner name</span>
       </p>
 
       <div class="fighters">
         <figure class="fighter">
-          <div id="image-a" class="image-placeholder" role="img" aria-label="Art for fighter 1"></div>
+          <div id="image-a" class="image-slot">
+            <img id="img-a" alt="" hidden>
+            <div id="status-a" class="slot-status" role="status"></div>
+            <button id="retry-image-a" type="button" class="retry-image" hidden>Retry image</button>
+          </div>
           <figcaption id="name-a">Fighter 1</figcaption>
         </figure>
 
+        <div class="vs-badge" aria-hidden="true">VS</div>
+
         <figure class="fighter">
-          <div id="image-b" class="image-placeholder" role="img" aria-label="Art for fighter 2"></div>
+          <div id="image-b" class="image-slot">
+            <img id="img-b" alt="" hidden>
+            <div id="status-b" class="slot-status" role="status"></div>
+            <button id="retry-image-b" type="button" class="retry-image" hidden>Retry image</button>
+          </div>
           <figcaption id="name-b">Fighter 2</figcaption>
         </figure>
       </div>
@@ -76,7 +88,7 @@
 
     <!-- View 4: error (hidden) -->
     <section id="view-error" class="view" hidden>
-      <p id="error-message" class="error-message" role="alert">Something went wrong.</p>
+      <p id="error-message" class="error-message" role="alert" tabindex="-1" data-focus>Something went wrong.</p>
       <button id="retry-button" type="button">Retry</button>
       <button id="back-button" type="button" class="secondary">Change fighters</button>
     </section>

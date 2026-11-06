@@ -1,4 +1,6 @@
-// Per-IP rate limit: 5 requests per minute (fixed one-minute window).
+// Per-IP rate limit (fixed one-minute window). Each route has its own bucket:
+// /api/verdict allows 5 per minute and /api/image allows 10 per minute
+// (a match is one verdict plus two images).
 //
 // Vercel Functions are stateless, so a counter held in memory only works per
 // function instance. When UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
@@ -10,7 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-export const LIMIT = 5;
+export const LIMIT = 5; // default per-route limit
 const WINDOW_MS = 60_000;
 
 const memory = new Map(); // key -> { bucket, count }
@@ -92,10 +94,10 @@ function isHosted() {
  * Counts this request against the caller's IP. Returns true if the request may
  * proceed. When over the limit it sends the 429 response itself and returns false.
  */
-export async function applyRateLimit(req, res) {
+export async function applyRateLimit(req, res, { scope = 'verdict', limit = LIMIT } = {}) {
   const now = Date.now();
   const bucket = Math.floor(now / WINDOW_MS);
-  const key = `battlegroup:rl:${getClientIp(req)}:${bucket}`;
+  const key = `battlegroup:rl:${scope}:${getClientIp(req)}:${bucket}`;
 
   let count;
   if (hasRedis()) {
@@ -115,10 +117,10 @@ export async function applyRateLimit(req, res) {
     count = incrementFile(key, bucket);
   }
 
-  res.setHeader('X-RateLimit-Limit', String(LIMIT));
-  res.setHeader('X-RateLimit-Remaining', String(Math.max(0, LIMIT - count)));
+  res.setHeader('X-RateLimit-Limit', String(limit));
+  res.setHeader('X-RateLimit-Remaining', String(Math.max(0, limit - count)));
 
-  if (count > LIMIT) {
+  if (count > limit) {
     const retryAfter = Math.max(1, Math.ceil(((bucket + 1) * WINDOW_MS - now) / 1000));
     res.setHeader('Retry-After', String(retryAfter));
     res.status(429).json({

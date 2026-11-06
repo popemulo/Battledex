@@ -4,12 +4,15 @@
 }
 
 :root {
-  --bg: #12121c;
-  --panel: #1d1d2e;
-  --text: #f2f2f7;
-  --muted: #a0a0b8;
-  --accent: #ff4d6d;
-  --border: #34344d;
+  --bg: #0d0d1a;
+  --panel: #181829;
+  --panel-2: #20203a;
+  --text: #f4f4fb;
+  --muted: #b4b4cc; /* 7:1 on --panel */
+  --accent: #ff5c7a; /* text/highlight on dark: 5.5:1 on --panel */
+  --accent-strong: #d71f48; /* button fill: 5:1 with white text */
+  --gold: #ffcf5a;
+  --border: #38385a;
 }
 
 * {
@@ -19,16 +22,20 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   line-height: 1.5;
+  background:
+    radial-gradient(1200px 500px at 50% -10%, rgba(215, 31, 72, 0.28), transparent 70%),
+    radial-gradient(900px 500px at 100% 100%, rgba(80, 90, 255, 0.18), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
 }
 
 .app {
-  max-width: 720px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: 24px 16px 56px;
 }
 
 .app-header {
@@ -38,8 +45,16 @@ body {
 
 .app-header h1 {
   margin: 0;
-  font-size: 2rem;
-  letter-spacing: 0.04em;
+  font-size: clamp(2rem, 7vw, 3rem);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, var(--gold), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--accent); /* fallback if clipping is unsupported */
 }
 
 .tagline {
@@ -48,10 +63,11 @@ body {
 }
 
 .view {
-  background: var(--panel);
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
 }
 
 /* Form view */
@@ -62,7 +78,8 @@ body {
 }
 
 .field label {
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 input[type="text"] {
@@ -75,9 +92,17 @@ input[type="text"] {
   border-radius: 8px;
 }
 
-input[type="text"]:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+input[type="text"]::placeholder {
+  color: #8e8eaa;
+}
+
+:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+[tabindex="-1"]:focus {
+  outline: none; /* focus is moved here by script, not by the user tabbing */
 }
 
 .desc-wrap {
@@ -93,37 +118,13 @@ input[type="text"]:focus {
   font-size: 0.9rem;
 }
 
-button.secondary {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
-}
-
-.image-placeholder.filled {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3rem;
-  font-weight: 800;
-  border-style: solid;
-  background: linear-gradient(160deg, #2a2a45, #1a1a2c);
-  animation: fade-in 0.4s ease;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 .vs {
   text-align: center;
   margin: 12px 0;
-  font-weight: 800;
-  color: var(--accent);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.2em;
+  color: var(--gold);
 }
 
 .form-message {
@@ -136,23 +137,36 @@ button {
   display: block;
   width: 100%;
   margin-top: 12px;
-  padding: 12px 16px;
+  padding: 13px 16px;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: #fff;
-  background: var(--accent);
+  background: linear-gradient(180deg, #ee2f58, var(--accent-strong));
   border: 0;
   border-radius: 8px;
   cursor: pointer;
+  transition: transform 0.1s ease, filter 0.15s ease;
 }
 
 button:hover {
   filter: brightness(1.1);
 }
 
+button:active {
+  transform: translateY(1px);
+}
+
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 /* Loading view */
@@ -163,6 +177,10 @@ button:disabled {
   gap: 16px;
   padding: 24px 0;
   color: var(--muted);
+}
+
+.loading p {
+  margin: 0;
 }
 
 .spinner {
@@ -183,26 +201,33 @@ button:disabled {
 /* Result view */
 .winner-banner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 12px;
   margin: 0 0 20px;
   font-size: 1.4rem;
+  animation: pop-in 0.4s ease both;
 }
 
 .win-label {
-  padding: 2px 10px;
-  font-weight: 800;
-  color: #fff;
-  background: var(--accent);
+  padding: 2px 12px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.08em;
+  color: #1a1204;
+  background: linear-gradient(180deg, #ffe08a, var(--gold));
   border-radius: 6px;
+  box-shadow: 0 0 18px rgba(255, 207, 90, 0.55);
 }
 
 .winner-name {
-  font-weight: 700;
+  font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .fighters {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
@@ -211,23 +236,112 @@ button:disabled {
 .fighter {
   margin: 0;
   text-align: center;
+  min-width: 0;
 }
 
-.image-placeholder {
-  aspect-ratio: 3 / 4;
+.vs-badge {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  font-weight: 900;
+  font-style: italic;
+  color: #fff;
+  background: var(--accent-strong);
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 0 16px rgba(215, 31, 72, 0.7);
+}
+
+.image-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  aspect-ratio: 2 / 3;
   width: 100%;
+  overflow: hidden;
+  padding: 12px;
   background: var(--bg);
-  border: 1px dashed var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.image-slot img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: fade-in 0.6s ease both;
+}
+
+.slot-status {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.image-slot.loading::before {
+  content: "";
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.image-slot.failed .slot-status {
+  color: var(--accent);
+}
+
+.retry-image {
+  width: auto;
+  margin-top: 0;
+  padding: 8px 14px;
+  font-size: 0.85rem;
 }
 
 .fighter figcaption {
   margin-top: 8px;
-  font-weight: 600;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .reasoning {
   margin: 20px 0 0;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 4px solid var(--gold);
+  border-radius: 6px;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Error view */
@@ -238,12 +352,30 @@ button:disabled {
 
 /* Narrow screens: stack the two fighters */
 @media (max-width: 480px) {
+  .view {
+    padding: 16px;
+  }
+
   .fighters {
     grid-template-columns: 1fr;
   }
 
-  .image-placeholder {
-    max-width: 260px;
+  .vs-badge {
+    display: none; /* stacked layout: the badge would sit on a caption */
+  }
+
+  .image-slot {
+    max-width: 280px;
     margin: 0 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -2,7 +2,9 @@
 //
 // Exactly one view is visible at a time, toggled with the `hidden` attribute.
 // Test without the API by adding ?mock=<mode> to the URL:
-//   ok | unknown | refused | ratelimit | error
+//   ok | unknown | refused | ratelimit | error | imagefail
+// (mock modes never call the API or the image cache; art is drawn as initials.
+// `imagefail` makes the first image attempt for fighter 1 fail, to test Retry.)
 (() => {
   const VIEWS = ['form', 'loading', 'result', 'error'];
   const MOCK = new URLSearchParams(location.search).get('mock');
@@ -16,10 +18,14 @@
   const formMessage = $('form-message');
 
   let lastRequest = null; // what Retry re-sends
+  let lastMatch = null; // the match currently on screen, for image Retry
   let busy = false;
 
   function showView(name) {
     for (const view of VIEWS) $('view-' + view).hidden = view !== name;
+    // Move keyboard/screen-reader focus to the new view's main message.
+    const target = $('view-' + name).querySelector('[data-focus]');
+    if (target) target.focus({ preventScroll: true });
   }
 
   function setBusy(value) {
@@ -39,25 +45,143 @@
     showView('form');
   }
 
+  // ---- Character art (Stage 6) and image cache (Stage 7) ----
+
+  const CACHE_PREFIX = 'bg:img:v2:'; // bump the version when the image prompt changes
+  const IMAGE_W = 512;
+  const IMAGE_H = 768;
+  let matchId = 0; // ignores images that arrive after a newer match started
+  let imageFailedOnce = false; // for ?mock=imagefail
+
+  const normaliseName = (name) => name.trim().toLowerCase().replace(/\s+/g, ' ');
+
+  // Drop images cached under older versions (made with an older prompt).
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('bg:img:') && !key.startsWith(CACHE_PREFIX)) localStorage.removeItem(key);
+    }
+  } catch {
+    // storage blocked: nothing to clean
+  }
+
+  function cacheGet(name) {
+    try {
+      return localStorage.getItem(CACHE_PREFIX + normaliseName(name));
+    } catch {
+      return null; // storage blocked or unavailable
+    }
+  }
+
+  function cacheSet(name, image) {
+    try {
+      localStorage.setItem(CACHE_PREFIX + normaliseName(name), image);
+    } catch {
+      // storage full or blocked: skip caching, never fail the match
+    }
+  }
+
+  // Shrinks the generated image so it is cheap to store; falls back to the original.
+  function shrinkImage(dataUrl) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = IMAGE_W;
+          canvas.height = IMAGE_H;
+          canvas.getContext('2d').drawImage(img, 0, 0, IMAGE_W, IMAGE_H);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        } catch {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
+  function mockArt(name) {
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${IMAGE_W}" height="${IMAGE_H}">` +
+      '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a2a5c"/><stop offset="1" stop-color="#171726"/></linearGradient></defs>' +
+      '<rect width="100%" height="100%" fill="url(#g)"/>' +
+      `<text x="50%" y="50%" fill="#f2f2f7" font-family="sans-serif" font-size="150" font-weight="800" text-anchor="middle" dominant-baseline="middle">${initials(name).replace(/[<>&]/g, '')}</text></svg>`;
+    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+  }
+
   function initials(name) {
     const parts = name.trim().split(/\s+/).filter(Boolean);
     const letters = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : name.trim().slice(0, 2);
     return letters.toUpperCase();
   }
 
-  // Stage 2/4 stand-in for the character art. Real images arrive in Stage 5.
-  function fillImage(id, name) {
-    const el = $(id);
-    el.textContent = initials(name);
-    el.classList.add('filled');
+  // Returns { httpStatus, data } like requestVerdict, for the mock and the real API.
+  async function requestImage(name, desc, side) {
+    if (MOCK) {
+      await delay(700);
+      if (MOCK === 'imagefail' && side === 'a' && !imageFailedOnce) {
+        imageFailedOnce = true;
+        return { httpStatus: 502, data: { status: 'error', message: "Couldn't draw this fighter. You can retry." } };
+      }
+      return { httpStatus: 200, data: { status: 'ok', image: mockArt(name) } };
+    }
+    const response = await fetch('/api/image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, desc }),
+    });
+    const data = await response.json().catch(() => null);
+    return { httpStatus: response.status, data };
   }
 
-  function resetImages() {
-    for (const id of ['image-a', 'image-b']) {
-      const el = $(id);
-      el.textContent = '';
-      el.classList.remove('filled');
+  function setSlot(side, { image, status, canRetry = false, name }) {
+    const img = $('img-' + side);
+    const slot = $('image-' + side);
+    const statusEl = $('status-' + side);
+    $('retry-image-' + side).hidden = !canRetry;
+    statusEl.textContent = status || '';
+    statusEl.hidden = !status;
+    slot.classList.toggle('loading', Boolean(status) && !canRetry);
+    slot.classList.toggle('failed', canRetry);
+    if (image) {
+      img.alt = `Anime-style art of ${name}`;
+      img.src = image;
+      img.hidden = false;
+    } else {
+      img.hidden = true;
+      img.removeAttribute('src');
+      img.alt = '';
     }
+  }
+
+  async function loadImage(side, name, desc, id) {
+    if (!MOCK) {
+      const cached = cacheGet(name);
+      if (cached) return setSlot(side, { image: cached, name });
+    }
+
+    setSlot(side, { status: 'Drawing...' });
+    let outcome;
+    try {
+      outcome = await requestImage(name, desc, side);
+    } catch {
+      outcome = { httpStatus: 0, data: null };
+    }
+    if (id !== matchId) return; // a newer match replaced this one
+
+    const { httpStatus, data } = outcome;
+    if (httpStatus === 200 && data && data.status === 'ok' && typeof data.image === 'string' && data.image.startsWith('data:image/')) {
+      const image = MOCK ? data.image : await shrinkImage(data.image);
+      if (id !== matchId) return;
+      if (!MOCK) cacheSet(name, image);
+      return setSlot(side, { image, name });
+    }
+
+    const message =
+      httpStatus === 429
+        ? 'Too many requests, try again shortly.'
+        : (data && data.message) || "Couldn't draw this fighter. You can retry.";
+    setSlot(side, { status: message, canRetry: true });
   }
 
   function showResult(request, data) {
@@ -66,14 +190,16 @@
     $('name-a').textContent = request.a;
     $('name-b').textContent = request.b;
     $('reasoning').textContent = data.reasoning;
-    resetImages();
+    matchId += 1;
+    const id = matchId;
+    lastMatch = { request, id };
+    setSlot('a', { status: 'Drawing...' });
+    setSlot('b', { status: 'Drawing...' });
     showView('result');
 
-    // The verdict shows first, then the art fills in.
-    setTimeout(() => {
-      fillImage('image-a', request.a);
-      fillImage('image-b', request.b);
-    }, 800);
+    // The verdict shows first; each image fills in as it arrives.
+    loadImage('a', request.a, request.descA, id);
+    loadImage('b', request.b, request.descB, id);
   }
 
   function delay(ms) {
@@ -168,6 +294,14 @@
     runFight({ a, b, descA, descB });
   });
 
+  for (const side of ['a', 'b']) {
+    $('retry-image-' + side).addEventListener('click', () => {
+      if (!lastMatch) return;
+      const { request, id } = lastMatch;
+      loadImage(side, side === 'a' ? request.a : request.b, side === 'a' ? request.descA : request.descB, id);
+    });
+  }
+
   retryButton.addEventListener('click', () => {
     if (!busy && lastRequest) runFight(lastRequest);
   });
@@ -175,6 +309,7 @@
   backButton.addEventListener('click', () => showFormMessage(''));
 
   $('again-button').addEventListener('click', () => {
+    matchId += 1; // drop any images still on the way
     for (const id of ['fighter-a', 'fighter-b', 'desc-a', 'desc-b']) $(id).value = '';
     $('desc-a-wrap').hidden = true;
     $('desc-b-wrap').hidden = true;
